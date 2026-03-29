@@ -71,13 +71,16 @@ This system adds two agent layers on top:
 property_rag_assistant/
 |
 |- main.py                          # FastAPI app, agentic pipeline orchestration
-|- Dockerfile
-|- docker-compose.yml
-|- requirements.txt
-|- CLAUDE.md
+|- streamlit_app.py                 # Streamlit frontend UI
+|- Dockerfile                       # FastAPI container
+|- Dockerfile.streamlit             # Streamlit container
+|- docker-compose.yml               # Runs both services together
+|- requirements.txt                 # FastAPI dependencies
+|- requirements.streamlit.txt       # Streamlit dependencies
+|- CLAUDE.md                        # Claude Code project context
 |- README.md
-|- .env
-|- .env.example
+|- .env                             # API keys (never commit)
+|- .env.example                     # Environment variable template
 |- .gitignore
 |- .dockerignore
 |
@@ -92,8 +95,8 @@ property_rag_assistant/
 |
 |- .github/
     |- workflows/
-        |- ci.yml
-        |- cd.yml
+        |- ci.yml                   # Lint, test, docker build validation
+        |- cd.yml                   # Docker build on merge to main
 ```
 
 ---
@@ -242,11 +245,19 @@ A dark-themed frontend is included alongside the FastAPI backend.
 
 ### Local Run
 
+Open two terminals:
+
+**Terminal 1 - FastAPI:**
+```bash
+uvicorn main:app --reload
+```
+
+**Terminal 2 - Streamlit:**
 ```bash
 streamlit run streamlit_app.py
 ```
 
-Open `http://localhost:8501`.
+Open `http://localhost:8501` for the UI and `http://localhost:8000/docs` for the API.
 
 ---
 
@@ -265,13 +276,6 @@ docker compose up --build
 
 The Streamlit container waits for the API healthcheck to pass before starting.
 
-Or run the API directly:
-
-```bash
-docker build -t property-rag .
-docker run -p 8000:8000 --env-file .env property-rag
-```
-
 ---
 
 ## CI/CD Pipeline
@@ -282,8 +286,7 @@ docker run -p 8000:8000 --env-file .env property-rag
 3. Docker build validation
 
 ### CD (`cd.yml`) - triggers on merge to `main`
-1. Build Docker image
-2. Push to Docker Hub (`latest` + `sha-` tags)
+1. Build Docker image (validation only, no push)
 
 ### Required GitHub Secrets
 
@@ -291,8 +294,6 @@ docker run -p 8000:8000 --env-file .env property-rag
 |---|---|
 | `PINECONE_API_KEY` | Pinecone API key |
 | `GEMINI_API_KEY` | Google Gemini API key |
-| `DOCKERHUB_USERNAME` | Docker Hub username |
-| `DOCKERHUB_TOKEN` | Docker Hub access token |
 
 ---
 
@@ -314,6 +315,7 @@ The Monitor Agent will surface if queries about that topic were previously being
 - Self-validating answer generation with confidence scoring and grounding detection
 - Proactive monitoring and knowledge gap surfacing
 - Production-grade FastAPI microservice architecture
+- Streamlit frontend with real-time critic validation display
 - Containerized deployment with Docker
 - CI/CD automation with GitHub Actions
 - Comprehensive test coverage including agent unit tests and end-to-end integration
