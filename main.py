@@ -1,10 +1,11 @@
 import os
+
 import numpy as np
+from dotenv import load_dotenv
 from fastapi import FastAPI
-from pinecone import Pinecone
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
+from pinecone import Pinecone
 
 from agents.critic_agent import validate_answer
 from agents.monitor_agent import MonitorAgent

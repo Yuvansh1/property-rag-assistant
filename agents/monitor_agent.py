@@ -60,9 +60,7 @@ class MonitorAgent:
         flag_rate = round(flagged_count / total, 3) if total > 0 else 0.0
 
         avg_confidence = (
-            round(
-                sum(q["confidence_score"] for q in self.query_log) / total, 3
-            )
+            round(sum(q["confidence_score"] for q in self.query_log) / total, 3)
             if total > 0
             else 0.0
         )
@@ -84,9 +82,7 @@ class MonitorAgent:
             "recommendation": self._generate_recommendation(flag_rate, avg_confidence),
         }
 
-    def _generate_recommendation(
-        self, flag_rate: float, avg_confidence: float
-    ) -> str:
+    def _generate_recommendation(self, flag_rate: float, avg_confidence: float) -> str:
         """
         Generates a plain-English recommendation based on current metrics.
         """

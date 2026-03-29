@@ -7,8 +7,8 @@ partially grounded, or hallucinated.
 """
 
 import json
-from google import genai
 
+from google import genai
 
 CRITIC_PROMPT = """
 You are a critic agent for a real estate knowledge retrieval system.
