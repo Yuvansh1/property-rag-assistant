@@ -6,8 +6,8 @@
 ![Gemini](https://img.shields.io/badge/LLM-Gemini-orange)
 ![Agentic RAG](https://img.shields.io/badge/Architecture-Agentic--RAG-red)
 ![Docker](https://img.shields.io/badge/Containerized-Docker-blue)
-![CI](https://github.com/YOUR_USERNAME/property-rag-assistant/actions/workflows/ci.yml/badge.svg)
-![CD](https://github.com/YOUR_USERNAME/property-rag-assistant/actions/workflows/cd.yml/badge.svg)
+![CI](https://github.com/Yuvansh1/property-rag-assistant/actions/workflows/ci.yml/badge.svg)
+![CD](https://github.com/Yuvansh1/property-rag-assistant/actions/workflows/cd.yml/badge.svg)
 
 Production-grade Agentic RAG system for real estate property knowledge retrieval. Extends a standard RAG pipeline with two specialized AI agents that add self-validation and proactive monitoring on top of retrieval and generation.
 
@@ -179,7 +179,7 @@ Copy `.env.example` to `.env` and fill in your keys. Never commit `.env`.
 ## Local Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/property-rag-assistant.git
+git clone https://github.com/Yuvansh1/property-rag-assistant.git
 cd property-rag-assistant
 
 python -m venv venv
