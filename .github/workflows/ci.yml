@@ -45,8 +45,8 @@ jobs:
     needs: lint
 
     env:
-      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      PINECONE_API_KEY: test-pinecone-key
+      GEMINI_API_KEY: test-gemini-key
 
     steps:
       - name: Checkout code
