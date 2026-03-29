@@ -179,13 +179,10 @@ class TestAskEndpoint:
         mock_pinecone.query.return_value = {
             "matches": [{"metadata": {"text": "Closing costs range from 2% to 5%."}}]
         }
-        # answer -> critic (2 calls)
-        mock_genai_client.models.generate_content.side_effect = [
-            make_llm_response(answer_text),
-            make_llm_response(
-                '{"confidence_score": 0.88, "grounding_status": "grounded", "reasoning": "Matches context.", "flagged": false}'
-            ),
-        ]
+        mock_genai_client.models.generate_content.side_effect = None
+        mock_genai_client.models.generate_content.return_value = MagicMock(
+            text=answer_text
+        )
 
     def test_ask_returns_200(self, client, mock_pinecone, mock_genai_client):
         self._setup_mocks(mock_pinecone, mock_genai_client)
