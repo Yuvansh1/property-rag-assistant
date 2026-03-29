@@ -220,6 +220,56 @@ Test coverage includes:
 
 ---
 
+## MLOps Components
+
+Three observability layers are built into the system.
+
+### Persistent Experiment Tracking
+
+Every `/ask` request is logged to `data/experiments.db` (SQLite) with a full latency breakdown:
+
+| Column | Description |
+|---|---|
+| embed_latency_ms | Time to generate the query embedding |
+| retrieve_latency_ms | Time to query Pinecone |
+| generate_latency_ms | Time for Gemini to generate the answer |
+| critic_latency_ms | Time for the critic agent to validate |
+| total_latency_ms | End-to-end request time |
+
+### Human Feedback Loop
+
+```bash
+# Submit thumbs up feedback for query 1
+curl -X POST http://localhost:8000/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"query_id": 1, "rating": "up"}'
+
+# Get feedback summary
+curl http://localhost:8000/feedback/summary
+```
+
+The feedback summary includes `agreement_rate` (thumbs up where critic did not flag) and
+`disagreement_rate` (thumbs down where critic did not flag).
+
+### Structured Latency Metrics
+
+```bash
+curl http://localhost:8000/metrics
+```
+
+Returns aggregate latency stats per pipeline step, p95 total latency, flag rate,
+and average confidence score computed live from the SQLite log.
+
+### MLOps Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `POST /feedback` | Submit thumbs up/down rating for a query |
+| `GET /feedback/summary` | Aggregate feedback with critic agreement rates |
+| `GET /metrics` | Per-step latency aggregates and p95 from SQLite |
+
+---
+
 ## Streamlit UI
 
 A dark-themed frontend is included alongside the FastAPI backend.
@@ -233,6 +283,7 @@ A dark-themed frontend is included alongside the FastAPI backend.
 - Grounding status badge: Grounded / Partially Grounded / Ungrounded
 - Flagged warning badge when critic flags the answer
 - Critic reasoning shown in a muted italic box
+- Thumbs up / thumbs down feedback buttons that submit to `POST /feedback`
 - Sidebar with 8 sample questions as clickable buttons
 
 **MONITOR**
@@ -241,6 +292,13 @@ A dark-themed frontend is included alongside the FastAPI backend.
 - Recommendation displayed in a highlighted box
 - Grounding distribution as horizontal progress bars
 - Recent flagged queries list with score and timestamp
+- Refresh button to reload data
+
+**METRICS**
+- Loads `GET /metrics` on tab open
+- Four latency cards: avg embed, retrieve, generate, critic latency (ms)
+- P95 total latency highlighted card
+- Feedback summary from `GET /feedback/summary` with agreement and disagreement rates
 - Refresh button to reload data
 
 ### Local Run

@@ -10,18 +10,40 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def mock_pinecone():
-    with patch("main.Pinecone") as mock_pc:
-        mock_index = MagicMock()
-        mock_pc.return_value.Index.return_value = mock_index
+    with patch("main.index") as mock_index:
         yield mock_index
 
 
 @pytest.fixture
 def mock_genai_client():
-    with patch("main.genai.Client") as mock_client:
-        client_instance = MagicMock()
-        mock_client.return_value = client_instance
-        yield client_instance
+    with patch("main.client") as mock_client:
+        yield mock_client
+
+
+@pytest.fixture
+def mock_tracker():
+    with patch("main.tracker") as mt:
+        mt.log.return_value = 1
+        mt.log_feedback.return_value = 1
+        mt.get_metrics.return_value = {
+            "total_queries": 0,
+            "avg_total_latency_ms": 0.0,
+            "avg_embed_latency_ms": 0.0,
+            "avg_retrieve_latency_ms": 0.0,
+            "avg_generate_latency_ms": 0.0,
+            "avg_critic_latency_ms": 0.0,
+            "flag_rate": 0.0,
+            "avg_confidence_score": 0.0,
+            "p95_total_latency_ms": 0.0,
+        }
+        mt.get_feedback_summary.return_value = {
+            "total_feedback": 0,
+            "thumbs_up": 0,
+            "thumbs_down": 0,
+            "agreement_rate": 0.0,
+            "disagreement_rate": 0.0,
+        }
+        yield mt
 
 
 def make_llm_response(text: str) -> MagicMock:
@@ -32,7 +54,7 @@ CRITIC_JSON = '{"confidence_score": 0.88, "grounding_status": "grounded", "reaso
 
 
 @pytest.fixture
-def client(mock_pinecone, mock_genai_client):
+def client(mock_pinecone, mock_genai_client, mock_tracker):
     mock_genai_client.models.embed_content.return_value = MagicMock(
         embeddings=[MagicMock(values=[0.1] * 1536)]
     )
@@ -200,6 +222,11 @@ class TestAskEndpoint:
         assert "flagged" in meta
         assert "critic_reasoning" in meta
 
+    def test_meta_contains_query_id(self, client, mock_pinecone, mock_genai_client):
+        self._setup_mocks(mock_pinecone, mock_genai_client)
+        meta = client.get("/ask?q=What+are+closing+costs").json()["meta"]
+        assert "query_id" in meta
+
     def test_ask_missing_query_returns_422(self, client):
         assert client.get("/ask").status_code == 422
 
@@ -235,3 +262,59 @@ class TestMonitorEndpoint:
         client.get("/ask?q=What+is+earnest+money")
         report = client.get("/monitor").json()
         assert report["summary"]["total_queries"] >= 1
+
+
+# Integration Tests - /feedback endpoint
+
+class TestFeedbackEndpoint:
+    def test_feedback_up_returns_200(self, client):
+        response = client.post("/feedback", json={"query_id": 1, "rating": "up"})
+        assert response.status_code == 200
+
+    def test_feedback_down_returns_200(self, client):
+        response = client.post("/feedback", json={"query_id": 1, "rating": "down"})
+        assert response.status_code == 200
+
+    def test_feedback_returns_recorded_status(self, client):
+        data = client.post("/feedback", json={"query_id": 1, "rating": "up"}).json()
+        assert data["status"] == "recorded"
+        assert data["rating"] == "up"
+        assert data["query_id"] == 1
+
+    def test_feedback_invalid_rating_returns_422(self, client):
+        response = client.post("/feedback", json={"query_id": 1, "rating": "maybe"})
+        assert response.status_code == 422
+
+    def test_feedback_missing_query_id_returns_422(self, client):
+        response = client.post("/feedback", json={"rating": "up"})
+        assert response.status_code == 422
+
+    def test_feedback_summary_returns_200(self, client):
+        assert client.get("/feedback/summary").status_code == 200
+
+    def test_feedback_summary_contains_required_keys(self, client):
+        data = client.get("/feedback/summary").json()
+        assert "total_feedback" in data
+        assert "thumbs_up" in data
+        assert "thumbs_down" in data
+        assert "agreement_rate" in data
+        assert "disagreement_rate" in data
+
+
+# Integration Tests - /metrics endpoint
+
+class TestMetricsEndpoint:
+    def test_metrics_returns_200(self, client):
+        assert client.get("/metrics").status_code == 200
+
+    def test_metrics_contains_required_keys(self, client):
+        data = client.get("/metrics").json()
+        assert "total_queries" in data
+        assert "avg_total_latency_ms" in data
+        assert "avg_embed_latency_ms" in data
+        assert "avg_retrieve_latency_ms" in data
+        assert "avg_generate_latency_ms" in data
+        assert "avg_critic_latency_ms" in data
+        assert "flag_rate" in data
+        assert "avg_confidence_score" in data
+        assert "p95_total_latency_ms" in data

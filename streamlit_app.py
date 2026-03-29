@@ -129,6 +129,33 @@ st.markdown("""
         background: #2d3249;
         border-color: #7c3aed;
     }
+
+    /* Feedback message */
+    .feedback-thanks {
+        color: #34d399;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+
+    /* P95 highlight card */
+    .p95-card {
+        background: #1e2130;
+        border: 1px solid #7c3aed;
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        text-align: center;
+    }
+    .p95-card .metric-value {color: #c4b5fd; font-size: 2rem; font-weight: 700;}
+    .p95-card .metric-label {font-size: 0.8rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.2rem;}
+
+    /* Feedback summary card */
+    .feedback-card {
+        background: #1e2130;
+        border: 1px solid #2d3249;
+        border-radius: 10px;
+        padding: 1rem 1.5rem;
+        margin-top: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -151,9 +178,9 @@ with st.sidebar:
             st.session_state["ask_input"] = q
 
 # Tabs
-tab_ask, tab_monitor = st.tabs(["ASK", "MONITOR"])
+tab_ask, tab_monitor, tab_metrics = st.tabs(["ASK", "MONITOR", "METRICS"])
 
-# ── ASK TAB ─────────────────────────────────────────────────────────────────
+# ── ASK TAB ──────────────────────────────────────────────────────────────────
 with tab_ask:
     st.markdown("## Property Knowledge Assistant")
 
@@ -170,41 +197,44 @@ with tab_ask:
             try:
                 resp = requests.get(f"{API_BASE}/ask", params={"q": question}, timeout=30)
                 resp.raise_for_status()
-                data = resp.json()
+                st.session_state["last_answer"] = resp.json()
+                st.session_state["feedback_given"] = False
             except Exception as e:
                 st.error(f"API error: {e}")
-                data = None
+                st.session_state.pop("last_answer", None)
 
-        if data:
-            answer = data.get("response", "")
-            meta = data.get("meta", {})
-            score = meta.get("confidence_score", 0.0)
-            grounding = meta.get("grounding_status", "unknown")
-            flagged = meta.get("flagged", False)
-            reasoning = meta.get("critic_reasoning", "")
+    if st.session_state.get("last_answer"):
+        data = st.session_state["last_answer"]
+        answer = data.get("response", "")
+        meta = data.get("meta", {})
+        score = meta.get("confidence_score") or 0.0
+        grounding = meta.get("grounding_status", "unknown")
+        flagged = meta.get("flagged", False)
+        reasoning = meta.get("critic_reasoning", "")
+        query_id = meta.get("query_id")
 
-            # Confidence color
-            if score >= 0.75:
-                conf_class = "conf-green"
-            elif score >= 0.5:
-                conf_class = "conf-yellow"
-            else:
-                conf_class = "conf-red"
+        # Confidence color
+        if score >= 0.75:
+            conf_class = "conf-green"
+        elif score >= 0.5:
+            conf_class = "conf-yellow"
+        else:
+            conf_class = "conf-red"
 
-            # Grounding badge class
-            grounding_class = {
-                "grounded": "badge-grounded",
-                "partially_grounded": "badge-partial",
-                "ungrounded": "badge-ungrounded",
-            }.get(grounding, "badge-partial")
-            grounding_label = grounding.replace("_", " ").title()
+        # Grounding badge
+        grounding_class = {
+            "grounded": "badge-grounded",
+            "partially_grounded": "badge-partial",
+            "ungrounded": "badge-ungrounded",
+        }.get(grounding, "badge-partial")
+        grounding_label = grounding.replace("_", " ").title()
 
-            flagged_html = (
-                '<span class="badge badge-flagged">Flagged</span>'
-                if flagged else ""
-            )
+        flagged_html = (
+            '<span class="badge badge-flagged">Flagged</span>'
+            if flagged else ""
+        )
 
-            st.markdown(f"""
+        st.markdown(f"""
 <div class="answer-card">{answer}</div>
 <div style="margin-top:0.75rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
     <span style="color:#9ca3af; font-size:0.85rem;">Confidence:</span>
@@ -214,10 +244,44 @@ with tab_ask:
 </div>
 """, unsafe_allow_html=True)
 
-            if reasoning:
-                st.markdown(f'<div class="reasoning-box">{reasoning}</div>', unsafe_allow_html=True)
+        if reasoning:
+            st.markdown(f'<div class="reasoning-box">{reasoning}</div>', unsafe_allow_html=True)
 
-# ── MONITOR TAB ──────────────────────────────────────────────────────────────
+        # Feedback buttons
+        st.markdown("<div style='margin-top:0.9rem; color:#9ca3af; font-size:0.85rem;'>Was this answer helpful?</div>",
+                    unsafe_allow_html=True)
+
+        if not st.session_state.get("feedback_given", False):
+            col_up, col_down, _ = st.columns([1, 1, 8])
+            with col_up:
+                if st.button("Thumbs Up", key="thumb_up") and query_id is not None:
+                    try:
+                        requests.post(
+                            f"{API_BASE}/feedback",
+                            json={"query_id": query_id, "rating": "up"},
+                            timeout=10,
+                        )
+                    except Exception:
+                        pass
+                    st.session_state["feedback_given"] = True
+                    st.rerun()
+            with col_down:
+                if st.button("Thumbs Down", key="thumb_down") and query_id is not None:
+                    try:
+                        requests.post(
+                            f"{API_BASE}/feedback",
+                            json={"query_id": query_id, "rating": "down"},
+                            timeout=10,
+                        )
+                    except Exception:
+                        pass
+                    st.session_state["feedback_given"] = True
+                    st.rerun()
+        else:
+            st.markdown('<div class="feedback-thanks">Thanks for your feedback!</div>', unsafe_allow_html=True)
+
+
+# ── MONITOR TAB ───────────────────────────────────────────────────────────────
 with tab_monitor:
     st.markdown("## Proactive Monitoring Report")
 
@@ -243,7 +307,6 @@ with tab_monitor:
         flag_rate = summary.get("flag_rate", 0.0)
         avg_conf = summary.get("average_confidence_score", 0.0)
 
-        # 4 metric cards
         c1, c2, c3, c4 = st.columns(4)
         for col, label, value in [
             (c1, "Total Queries", str(total)),
@@ -261,13 +324,11 @@ with tab_monitor:
 
         st.markdown("<div style='height:1.2rem'></div>", unsafe_allow_html=True)
 
-        # Recommendation
         recommendation = monitor.get("recommendation", "")
         if recommendation:
             st.markdown(f'<div class="recommendation-box">{recommendation}</div>', unsafe_allow_html=True)
             st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-        # Grounding distribution
         grounding_dist = monitor.get("grounding_distribution", {})
         if grounding_dist:
             st.markdown("#### Grounding Distribution")
@@ -286,7 +347,6 @@ with tab_monitor:
 
         st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
-        # Recent flagged queries
         flagged_queries = monitor.get("recent_flagged_queries", [])
         if flagged_queries:
             st.markdown("#### Recent Flagged Queries")
@@ -303,3 +363,116 @@ with tab_monitor:
 """, unsafe_allow_html=True)
         elif total == 0:
             st.info("No queries recorded yet. Use the ASK tab to get started.")
+
+
+# ── METRICS TAB ───────────────────────────────────────────────────────────────
+with tab_metrics:
+    st.markdown("## Latency and Performance Metrics")
+
+    if st.button("Refresh", key="metrics_refresh"):
+        st.session_state.pop("metrics_data", None)
+        st.session_state.pop("feedback_summary_data", None)
+
+    if "metrics_data" not in st.session_state:
+        with st.spinner("Loading metrics..."):
+            try:
+                resp = requests.get(f"{API_BASE}/metrics", timeout=15)
+                resp.raise_for_status()
+                st.session_state["metrics_data"] = resp.json()
+            except Exception as e:
+                st.error(f"API error: {e}")
+                st.session_state["metrics_data"] = None
+
+    if "feedback_summary_data" not in st.session_state:
+        try:
+            resp = requests.get(f"{API_BASE}/feedback/summary", timeout=15)
+            resp.raise_for_status()
+            st.session_state["feedback_summary_data"] = resp.json()
+        except Exception:
+            st.session_state["feedback_summary_data"] = None
+
+    metrics = st.session_state.get("metrics_data")
+    feedback_summary = st.session_state.get("feedback_summary_data")
+
+    if metrics:
+        st.markdown("#### Per-Step Latency (avg ms)")
+        c1, c2, c3, c4 = st.columns(4)
+        latency_cards = [
+            (c1, "Embed", metrics.get("avg_embed_latency_ms", 0.0)),
+            (c2, "Retrieve", metrics.get("avg_retrieve_latency_ms", 0.0)),
+            (c3, "Generate", metrics.get("avg_generate_latency_ms", 0.0)),
+            (c4, "Critic", metrics.get("avg_critic_latency_ms", 0.0)),
+        ]
+        for col, label, val in latency_cards:
+            with col:
+                st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-value">{val:.0f}</div>
+    <div class="metric-label">{label}</div>
+</div>
+""", unsafe_allow_html=True)
+
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+
+        # P95 and overall stats
+        col_p95, col_total, col_flag, col_conf = st.columns(4)
+        with col_p95:
+            p95 = metrics.get("p95_total_latency_ms", 0.0)
+            st.markdown(f"""
+<div class="p95-card">
+    <div class="metric-value">{p95:.0f}</div>
+    <div class="metric-label">P95 Total Latency (ms)</div>
+</div>
+""", unsafe_allow_html=True)
+        with col_total:
+            st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-value">{metrics.get("total_queries", 0)}</div>
+    <div class="metric-label">Total Queries</div>
+</div>
+""", unsafe_allow_html=True)
+        with col_flag:
+            flag_pct = metrics.get("flag_rate", 0.0) * 100
+            st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-value">{flag_pct:.1f}%</div>
+    <div class="metric-label">Flag Rate</div>
+</div>
+""", unsafe_allow_html=True)
+        with col_conf:
+            conf_pct = metrics.get("avg_confidence_score", 0.0) * 100
+            st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-value">{conf_pct:.1f}%</div>
+    <div class="metric-label">Avg Confidence</div>
+</div>
+""", unsafe_allow_html=True)
+
+        st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
+
+    if feedback_summary:
+        st.markdown("#### Human Feedback Summary")
+        total_fb = feedback_summary.get("total_feedback", 0)
+        thumbs_up = feedback_summary.get("thumbs_up", 0)
+        thumbs_down = feedback_summary.get("thumbs_down", 0)
+        agreement = feedback_summary.get("agreement_rate", 0.0)
+        disagreement = feedback_summary.get("disagreement_rate", 0.0)
+
+        fc1, fc2, fc3, fc4, fc5 = st.columns(5)
+        for col, label, val in [
+            (fc1, "Total Feedback", str(total_fb)),
+            (fc2, "Thumbs Up", str(thumbs_up)),
+            (fc3, "Thumbs Down", str(thumbs_down)),
+            (fc4, "Agreement Rate", f"{agreement * 100:.1f}%"),
+            (fc5, "Disagreement Rate", f"{disagreement * 100:.1f}%"),
+        ]:
+            with col:
+                st.markdown(f"""
+<div class="metric-card">
+    <div class="metric-value">{val}</div>
+    <div class="metric-label">{label}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    if not metrics and not feedback_summary:
+        st.info("No data yet. Use the ASK tab to generate queries, then refresh.")

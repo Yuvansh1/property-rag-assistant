@@ -1,14 +1,20 @@
 import os
+import time
+from datetime import datetime, timezone
+from typing import Literal
 
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from google import genai
 from google.genai import types
 from pinecone import Pinecone
+from pydantic import BaseModel
 
 from agents.critic_agent import validate_answer
 from agents.monitor_agent import MonitorAgent
+from mlops.logger import get_logger
+from mlops.tracker import ExperimentTracker
 
 load_dotenv()
 
@@ -35,6 +41,18 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Proactive monitor - tracks all query cycles in memory
 monitor = MonitorAgent(low_confidence_threshold=0.6)
+
+# Persistent experiment tracker - logs to SQLite
+tracker = ExperimentTracker()
+
+# Structured JSON logger
+logger = get_logger("property_rag")
+
+
+class FeedbackRequest(BaseModel):
+    query_id: int
+    rating: Literal["up", "down"]
+    comment: str = ""
 
 
 def normalize(vec: list[float]) -> list[float]:
@@ -128,23 +146,58 @@ def ask(q: str):
     2. Generate grounded answer via Gemini Flash
     3. Critic Agent - validates answer confidence against context
     4. Monitor Agent - records result for proactive pattern detection
+    5. Tracker - persists full record with latency breakdown to SQLite
     """
+    t_start = time.perf_counter()
 
-    # Step 1: Embed and retrieve
+    logger.info("query_received", extra={
+        "event": "query_received", "query_id": None, "step": None,
+        "latency_ms": None, "log_extra": {"question": q},
+    })
+
+    # Step 1: Embed
+    t0 = time.perf_counter()
     qvec = embed(q)
+    embed_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+    logger.info("embed_complete", extra={
+        "event": "embed_complete", "query_id": None, "step": "embed",
+        "latency_ms": embed_latency_ms, "log_extra": {},
+    })
+
+    # Step 1 cont: Retrieve
+    t1 = time.perf_counter()
     res = index.query(
         vector=qvec,
         top_k=3,
         include_metadata=True,
         namespace=NAMESPACE,
     )
+    retrieve_latency_ms = round((time.perf_counter() - t1) * 1000, 2)
     context = "\n".join([m["metadata"]["text"] for m in res["matches"]])
+    logger.info("retrieve_complete", extra={
+        "event": "retrieve_complete", "query_id": None, "step": "retrieve",
+        "latency_ms": retrieve_latency_ms, "log_extra": {},
+    })
 
     # Step 2: Generate answer
+    t2 = time.perf_counter()
     answer = generate_answer(q, context)
+    generate_latency_ms = round((time.perf_counter() - t2) * 1000, 2)
+    logger.info("generate_complete", extra={
+        "event": "generate_complete", "query_id": None, "step": "generate",
+        "latency_ms": generate_latency_ms, "log_extra": {},
+    })
 
     # Step 3: Critic agent - validate answer against context
+    t3 = time.perf_counter()
     critique = validate_answer(q, context, answer, client)
+    critic_latency_ms = round((time.perf_counter() - t3) * 1000, 2)
+    logger.info("critic_complete", extra={
+        "event": "critic_complete", "query_id": None, "step": "critic",
+        "latency_ms": critic_latency_ms, "log_extra": {},
+    })
+
+    total_latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
 
     # Step 4: Monitor agent - record this query cycle
     monitor.record(
@@ -154,15 +207,58 @@ def ask(q: str):
         flagged=critique.get("flagged", False),
     )
 
+    # Step 5: Persist record to SQLite
+    query_id = tracker.log({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "question": q,
+        "answer": answer,
+        "confidence_score": critique.get("confidence_score"),
+        "grounding_status": critique.get("grounding_status"),
+        "flagged": critique.get("flagged", False),
+        "embed_latency_ms": embed_latency_ms,
+        "retrieve_latency_ms": retrieve_latency_ms,
+        "generate_latency_ms": generate_latency_ms,
+        "critic_latency_ms": critic_latency_ms,
+        "total_latency_ms": total_latency_ms,
+    })
+
+    logger.info("query_complete", extra={
+        "event": "query_complete", "query_id": query_id, "step": None,
+        "latency_ms": total_latency_ms, "log_extra": {},
+    })
+
     return {
         "response": answer,
         "meta": {
+            "query_id": query_id,
             "confidence_score": critique.get("confidence_score"),
             "grounding_status": critique.get("grounding_status"),
             "flagged": critique.get("flagged"),
             "critic_reasoning": critique.get("reasoning"),
         },
     }
+
+
+@app.post("/feedback")
+def submit_feedback(body: FeedbackRequest):
+    """
+    Record human thumbs up/down feedback for a completed query.
+    Pass the query_id returned by /ask in the request body.
+    """
+    feedback_id = tracker.log_feedback(body.query_id, body.rating, body.comment)
+    logger.info("feedback_received", extra={
+        "event": "feedback_received", "query_id": body.query_id, "step": None,
+        "latency_ms": None, "log_extra": {"rating": body.rating, "feedback_id": feedback_id},
+    })
+    return {"status": "recorded", "query_id": body.query_id, "rating": body.rating}
+
+
+@app.get("/feedback/summary")
+def feedback_summary():
+    """
+    Aggregate feedback statistics with critic agreement and disagreement rates.
+    """
+    return tracker.get_feedback_summary()
 
 
 @app.get("/monitor")
@@ -173,3 +269,13 @@ def monitoring_report():
     queries, and actionable recommendations.
     """
     return monitor.get_report()
+
+
+@app.get("/metrics")
+def metrics():
+    """
+    Structured latency and performance metrics from the SQLite experiment log.
+    Includes per-step average latencies, p95 total latency, flag rate,
+    and average confidence score.
+    """
+    return tracker.get_metrics()
