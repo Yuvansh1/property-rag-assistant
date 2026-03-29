@@ -5,7 +5,7 @@ from typing import Literal
 
 import numpy as np
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from google import genai
 from google.genai import types
 from pinecone import Pinecone
