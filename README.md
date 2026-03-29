@@ -217,13 +217,55 @@ Test coverage includes:
 
 ---
 
+## Streamlit UI
+
+A dark-themed frontend is included alongside the FastAPI backend.
+
+### Tabs
+
+**ASK**
+- Text input for any real estate question
+- Answer displayed in a styled card
+- Confidence score shown as a colored percentage (green >= 75%, yellow >= 50%, red below)
+- Grounding status badge: Grounded / Partially Grounded / Ungrounded
+- Flagged warning badge when critic flags the answer
+- Critic reasoning shown in a muted italic box
+- Sidebar with 8 sample questions as clickable buttons
+
+**MONITOR**
+- Loads the `/monitor` report on tab open
+- Four metric cards: Total Queries, Flagged Queries, Flag Rate, Avg Confidence
+- Recommendation displayed in a highlighted box
+- Grounding distribution as horizontal progress bars
+- Recent flagged queries list with score and timestamp
+- Refresh button to reload data
+
+### Local Run
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Open `http://localhost:8501`.
+
+---
+
 ## Docker Deployment
+
+Both services start together:
 
 ```bash
 docker compose up --build
 ```
 
-Or directly:
+| Service | Port | URL |
+|---|---|---|
+| FastAPI | 8000 | http://localhost:8000/docs |
+| Streamlit | 8501 | http://localhost:8501 |
+
+The Streamlit container waits for the API healthcheck to pass before starting.
+
+Or run the API directly:
 
 ```bash
 docker build -t property-rag .

@@ -96,3 +96,62 @@ flake8 main.py agents/ --max-line-length=100
 - `.github/workflows/ci.yml` runs on push/PR to main: lint, test, docker build
 - `.github/workflows/cd.yml` runs on merge to main: build and push to Docker Hub
 - Secrets: PINECONE_API_KEY, GEMINI_API_KEY, DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+
+---
+
+## Tasks
+
+### Add Streamlit UI
+
+Add a Streamlit frontend to this project alongside the existing FastAPI backend.
+
+**Files to create:**
+
+`streamlit_app.py`
+- Dark themed UI with two tabs: ASK and MONITOR
+- ASK tab:
+  - Text input for user question
+  - On submit, call GET http://api:8000/ask?q={question}
+  - Display the answer in a styled card
+  - Display confidence_score as a colored percentage (green >= 0.75, yellow >= 0.5, red below)
+  - Display grounding_status as a badge (grounded / partially_grounded / ungrounded)
+  - Display flagged as a warning badge if true
+  - Display critic_reasoning in a muted italic box below
+  - Sidebar with 8 sample questions as clickable buttons that populate the input
+- MONITOR tab:
+  - Call GET http://api:8000/monitor on load
+  - Show 4 metric cards: total_queries, flagged_queries, flag_rate, average_confidence_score
+  - Show recommendation in a highlighted box
+  - Show grounding_distribution as horizontal progress bars
+  - Show recent_flagged_queries as a list with score and timestamp
+  - Refresh button to reload data
+- API base URL: http://api:8000 (Docker) — no env var needed, hardcoded for simplicity
+- Hide Streamlit default header, footer, and menu
+
+`Dockerfile.streamlit`
+- Base image: python:3.11-slim
+- Install streamlit and requests only
+- Run: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+
+**Files to update:**
+
+`docker-compose.yml`
+- Keep existing api service on port 8000 with healthcheck
+- Add streamlit service on port 8501
+- streamlit depends_on api with condition: service_healthy
+- Both services use restart: unless-stopped
+
+`requirements.txt`
+- Add streamlit
+- Add requests
+
+`README.md`
+- Add a Streamlit UI section documenting the two tabs
+- Update Docker Compose instructions to mention both ports
+- Add local run instructions: streamlit run streamlit_app.py
+
+**Coding conventions:**
+- No em dashes anywhere in code or comments
+- Use requests library (not httpx) for API calls in Streamlit
+- All Streamlit markdown injected via st.markdown with unsafe_allow_html=True for custom styling
+- Keep streamlit_app.py self-contained, no imports from agents/ folder

@@ -1,9 +1,27 @@
 services:
-  insurance-rag:
+  api:
     build: .
-    container_name: insurance-rag
+    container_name: property-rag-api
     ports:
       - "8000:8000"
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: property-rag-streamlit
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
