@@ -8,12 +8,6 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture(autouse=True)
-def mock_env(monkeypatch):
-    monkeypatch.setenv("PINECONE_API_KEY", "test-pinecone-key")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
-
-
 @pytest.fixture
 def mock_pinecone():
     with patch("main.Pinecone") as mock_pc:
@@ -32,6 +26,9 @@ def mock_genai_client():
 
 def make_llm_response(text: str) -> MagicMock:
     return MagicMock(text=text)
+
+
+CRITIC_JSON = '{"confidence_score": 0.88, "grounding_status": "grounded", "reasoning": "Matches context.", "flagged": false}'
 
 
 @pytest.fixture
@@ -179,10 +176,10 @@ class TestAskEndpoint:
         mock_pinecone.query.return_value = {
             "matches": [{"metadata": {"text": "Closing costs range from 2% to 5%."}}]
         }
-        mock_genai_client.models.generate_content.side_effect = None
-        mock_genai_client.models.generate_content.return_value = MagicMock(
-            text=answer_text
-        )
+        mock_genai_client.models.generate_content.side_effect = [
+            make_llm_response(answer_text),
+            make_llm_response(CRITIC_JSON),
+        ]
 
     def test_ask_returns_200(self, client, mock_pinecone, mock_genai_client):
         self._setup_mocks(mock_pinecone, mock_genai_client)
@@ -233,9 +230,7 @@ class TestMonitorEndpoint:
         }
         mock_genai_client.models.generate_content.side_effect = [
             make_llm_response("Earnest money is a commitment deposit."),
-            make_llm_response(
-                '{"confidence_score": 0.91, "grounding_status": "grounded", "reasoning": "Direct match.", "flagged": false}'
-            ),
+            make_llm_response(CRITIC_JSON),
         ]
         client.get("/ask?q=What+is+earnest+money")
         report = client.get("/monitor").json()
