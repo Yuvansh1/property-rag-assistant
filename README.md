@@ -186,8 +186,8 @@ git clone https://github.com/Yuvansh1/property-rag-assistant.git
 cd property-rag-assistant
 
 python -m venv venv
-source venv/bin/activate      # Mac/Linux
-venv\Scripts\activate         # Windows
+source venv/bin/activate    # Mac/Linux
+venv\Scripts\activate       # Windows
 
 pip install --upgrade pip
 pip install -r requirements.txt
