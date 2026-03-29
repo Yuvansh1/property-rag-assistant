@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pinecone
+google-genai
+numpy
+python-dotenv
