@@ -150,19 +150,31 @@ def ask(q: str):
     """
     t_start = time.perf_counter()
 
-    logger.info("query_received", extra={
-        "event": "query_received", "query_id": None, "step": None,
-        "latency_ms": None, "log_extra": {"question": q},
-    })
+    logger.info(
+        "query_received",
+        extra={
+            "event": "query_received",
+            "query_id": None,
+            "step": None,
+            "latency_ms": None,
+            "log_extra": {"question": q},
+        },
+    )
 
     # Step 1: Embed
     t0 = time.perf_counter()
     qvec = embed(q)
     embed_latency_ms = round((time.perf_counter() - t0) * 1000, 2)
-    logger.info("embed_complete", extra={
-        "event": "embed_complete", "query_id": None, "step": "embed",
-        "latency_ms": embed_latency_ms, "log_extra": {},
-    })
+    logger.info(
+        "embed_complete",
+        extra={
+            "event": "embed_complete",
+            "query_id": None,
+            "step": "embed",
+            "latency_ms": embed_latency_ms,
+            "log_extra": {},
+        },
+    )
 
     # Step 1 cont: Retrieve
     t1 = time.perf_counter()
@@ -174,28 +186,46 @@ def ask(q: str):
     )
     retrieve_latency_ms = round((time.perf_counter() - t1) * 1000, 2)
     context = "\n".join([m["metadata"]["text"] for m in res["matches"]])
-    logger.info("retrieve_complete", extra={
-        "event": "retrieve_complete", "query_id": None, "step": "retrieve",
-        "latency_ms": retrieve_latency_ms, "log_extra": {},
-    })
+    logger.info(
+        "retrieve_complete",
+        extra={
+            "event": "retrieve_complete",
+            "query_id": None,
+            "step": "retrieve",
+            "latency_ms": retrieve_latency_ms,
+            "log_extra": {},
+        },
+    )
 
     # Step 2: Generate answer
     t2 = time.perf_counter()
     answer = generate_answer(q, context)
     generate_latency_ms = round((time.perf_counter() - t2) * 1000, 2)
-    logger.info("generate_complete", extra={
-        "event": "generate_complete", "query_id": None, "step": "generate",
-        "latency_ms": generate_latency_ms, "log_extra": {},
-    })
+    logger.info(
+        "generate_complete",
+        extra={
+            "event": "generate_complete",
+            "query_id": None,
+            "step": "generate",
+            "latency_ms": generate_latency_ms,
+            "log_extra": {},
+        },
+    )
 
     # Step 3: Critic agent - validate answer against context
     t3 = time.perf_counter()
     critique = validate_answer(q, context, answer, client)
     critic_latency_ms = round((time.perf_counter() - t3) * 1000, 2)
-    logger.info("critic_complete", extra={
-        "event": "critic_complete", "query_id": None, "step": "critic",
-        "latency_ms": critic_latency_ms, "log_extra": {},
-    })
+    logger.info(
+        "critic_complete",
+        extra={
+            "event": "critic_complete",
+            "query_id": None,
+            "step": "critic",
+            "latency_ms": critic_latency_ms,
+            "log_extra": {},
+        },
+    )
 
     total_latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
 
@@ -208,24 +238,32 @@ def ask(q: str):
     )
 
     # Step 5: Persist record to SQLite
-    query_id = tracker.log({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "question": q,
-        "answer": answer,
-        "confidence_score": critique.get("confidence_score"),
-        "grounding_status": critique.get("grounding_status"),
-        "flagged": critique.get("flagged", False),
-        "embed_latency_ms": embed_latency_ms,
-        "retrieve_latency_ms": retrieve_latency_ms,
-        "generate_latency_ms": generate_latency_ms,
-        "critic_latency_ms": critic_latency_ms,
-        "total_latency_ms": total_latency_ms,
-    })
+    query_id = tracker.log(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "question": q,
+            "answer": answer,
+            "confidence_score": critique.get("confidence_score"),
+            "grounding_status": critique.get("grounding_status"),
+            "flagged": critique.get("flagged", False),
+            "embed_latency_ms": embed_latency_ms,
+            "retrieve_latency_ms": retrieve_latency_ms,
+            "generate_latency_ms": generate_latency_ms,
+            "critic_latency_ms": critic_latency_ms,
+            "total_latency_ms": total_latency_ms,
+        }
+    )
 
-    logger.info("query_complete", extra={
-        "event": "query_complete", "query_id": query_id, "step": None,
-        "latency_ms": total_latency_ms, "log_extra": {},
-    })
+    logger.info(
+        "query_complete",
+        extra={
+            "event": "query_complete",
+            "query_id": query_id,
+            "step": None,
+            "latency_ms": total_latency_ms,
+            "log_extra": {},
+        },
+    )
 
     return {
         "response": answer,
@@ -246,10 +284,16 @@ def submit_feedback(body: FeedbackRequest):
     Pass the query_id returned by /ask in the request body.
     """
     feedback_id = tracker.log_feedback(body.query_id, body.rating, body.comment)
-    logger.info("feedback_received", extra={
-        "event": "feedback_received", "query_id": body.query_id, "step": None,
-        "latency_ms": None, "log_extra": {"rating": body.rating, "feedback_id": feedback_id},
-    })
+    logger.info(
+        "feedback_received",
+        extra={
+            "event": "feedback_received",
+            "query_id": body.query_id,
+            "step": None,
+            "latency_ms": None,
+            "log_extra": {"rating": body.rating, "feedback_id": feedback_id},
+        },
+    )
     return {"status": "recorded", "query_id": body.query_id, "rating": body.rating}
 
 
