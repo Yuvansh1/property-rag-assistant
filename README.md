@@ -13,6 +13,10 @@ Production-grade Agentic RAG system for real estate property knowledge retrieval
 
 Built using Gemini Embeddings, Gemini LLM, Pinecone Serverless, FastAPI, and Docker. Includes a full CI/CD pipeline via GitHub Actions.
 
+## Demo
+
+![Demo](real_estate_project.gif)
+
 ---
 
 ## What Makes This Agentic
