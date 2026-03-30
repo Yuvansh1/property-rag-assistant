@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-API_BASE = "http://localhost:8000"
+API_BASE = "http://api:8000"
 
 st.set_page_config(page_title="Property RAG Assistant", layout="wide", initial_sidebar_state="expanded")
 
