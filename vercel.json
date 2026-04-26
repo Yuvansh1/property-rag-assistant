@@ -2,12 +2,12 @@
   "routes": [
     { "handle": "filesystem" },
 
-    { "src": "^/ask", "dest": "/api/index.py" },
-    { "src": "^/feedback", "dest": "/api/index.py" },
-    { "src": "^/feedback/summary", "dest": "/api/index.py" },
-    { "src": "^/monitor", "dest": "/api/index.py" },
-    { "src": "^/metrics", "dest": "/api/index.py" },
-    { "src": "^/docs", "dest": "/api/index.py" },
-    { "src": "^/openapi.json", "dest": "/api/index.py" }
+    { "src": "^/ask$", "dest": "/api/index.py" },
+    { "src": "^/feedback$", "dest": "/api/index.py" },
+    { "src": "^/feedback/summary$", "dest": "/api/index.py" },
+    { "src": "^/monitor$", "dest": "/api/index.py" },
+    { "src": "^/metrics$", "dest": "/api/index.py" },
+    { "src": "^/docs$", "dest": "/api/index.py" },
+    { "src": "^/openapi.json$", "dest": "/api/index.py" }
   ]
 }
