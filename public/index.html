@@ -2,143 +2,600 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Property Knowledge Assistant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Property RAG Assistant</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f5f5f7;
+    background: #0e1117;
+    color: #e0e0e0;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     padding: 2rem 1rem;
   }
-  h1 { margin-bottom: 0.5rem; color: #1d1d1f; }
-  .subtitle { color: #6e6e73; margin-bottom: 2rem; font-size: 0.95rem; }
-  .container {
-    width: 100%;
-    max-width: 720px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-    padding: 1.5rem;
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
   }
-  .input-row { display: flex; gap: 0.5rem; }
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+  }
+  .header .subtitle {
+    color: #9ca3af;
+    font-size: 0.95rem;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #2d3249;
+  }
+  .tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    color: #9ca3af;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #c4b5fd; }
+  .tab.active {
+    color: #a78bfa;
+    border-bottom-color: #7c3aed;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  
+  /* Ask Tab */
+  .samples {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .sample-btn {
+    padding: 0.6rem 1rem;
+    background: #1e2130;
+    color: #c4b5fd;
+    border: 1px solid #3b3f5c;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-align: left;
+    transition: all 0.2s;
+  }
+  .sample-btn:hover {
+    background: #2d3249;
+    border-color: #7c3aed;
+  }
+  .input-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
   input {
     flex: 1;
-    padding: 0.75rem 1rem;
-    border: 1px solid #d2d2d7;
+    padding: 0.9rem 1.2rem;
+    background: #1e2130;
+    border: 1px solid #2d3249;
     border-radius: 8px;
+    color: #e0e0e0;
     font-size: 1rem;
     outline: none;
   }
-  input:focus { border-color: #0071e3; }
-  button {
-    padding: 0.75rem 1.5rem;
-    background: #0071e3;
+  input:focus { border-color: #7c3aed; }
+  button.primary {
+    padding: 0.9rem 2rem;
+    background: #7c3aed;
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    font-weight: 500;
+    transition: all 0.2s;
   }
-  button:disabled { background: #a8a8a8; cursor: not-allowed; }
-  button:hover:not(:disabled) { background: #0077ed; }
-  .answer {
-    margin-top: 1.5rem;
-    padding: 1rem 1.25rem;
-    background: #f5f5f7;
-    border-radius: 8px;
+  button.primary:hover { background: #6d28d9; }
+  button.primary:disabled {
+    background: #4b5563;
+    cursor: not-allowed;
+  }
+  .answer-card {
+    background: #1e2130;
+    border: 1px solid #2d3249;
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    margin-top: 1rem;
+    font-size: 1rem;
     line-height: 1.6;
-    color: #1d1d1f;
-    white-space: pre-wrap;
   }
-  .meta {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
-    color: #6e6e73;
+  .meta-row {
     display: flex;
+    align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
   }
   .badge {
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    background: #e8f5e9;
-    color: #2e7d32;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
   }
-  .badge.flagged { background: #ffebee; color: #c62828; }
-  .examples { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .example {
-    padding: 0.4rem 0.8rem;
-    background: #f5f5f7;
-    border-radius: 16px;
-    font-size: 0.85rem;
+  .badge-grounded { background: #064e3b; color: #6ee7b7; }
+  .badge-partial { background: #78350f; color: #fcd34d; }
+  .badge-ungrounded { background: #7f1d1d; color: #fca5a5; }
+  .badge-flagged { background: #7c3aed; color: #ede9fe; }
+  .conf-green { color: #34d399; font-weight: 700; }
+  .conf-yellow { color: #fbbf24; font-weight: 700; }
+  .conf-red { color: #f87171; font-weight: 700; }
+  .reasoning-box {
+    background: #161b2e;
+    border-left: 3px solid #4b5563;
+    padding: 0.7rem 1rem;
+    margin-top: 0.75rem;
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+    color: #9ca3af;
+    font-size: 0.88rem;
+  }
+  .feedback-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .feedback-btn {
+    padding: 0.5rem 1rem;
+    background: #1e2130;
+    border: 1px solid #2d3249;
+    border-radius: 6px;
+    color: #9ca3af;
     cursor: pointer;
-    color: #424245;
+    font-size: 0.85rem;
+    transition: all 0.2s;
   }
-  .example:hover { background: #e8e8ed; }
-  .error { color: #c62828; margin-top: 1rem; }
+  .feedback-btn:hover {
+    background: #2d3249;
+    color: #c4b5fd;
+  }
+  .feedback-thanks {
+    color: #34d399;
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+  
+  /* Monitor Tab */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .metric-card {
+    background: #1e2130;
+    border: 1px solid #2d3249;
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #a78bfa;
+  }
+  .metric-label {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+  }
+  .recommendation-box {
+    background: #1e2a45;
+    border: 1px solid #3b82f6;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    color: #93c5fd;
+    margin-bottom: 1.5rem;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 1rem;
+  }
+  .bar-container {
+    margin-bottom: 0.75rem;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #d1d5db;
+    margin-bottom: 0.25rem;
+  }
+  .bar-track {
+    background: #2d3249;
+    border-radius: 999px;
+    height: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: #7c3aed;
+    border-radius: 999px;
+    transition: width 0.3s;
+  }
+  .flagged-item {
+    background: #1e2130;
+    border: 1px solid #2d3249;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.88rem;
+  }
+  .flagged-item strong { color: #e0e0e0; }
+  .flagged-score { color: #fca5a5; margin-left: 0.5rem; }
+  .flagged-time { color: #6b7280; margin-left: 0.5rem; font-size: 0.78rem; }
+  
+  /* Metrics Tab */
+  .p95-card {
+    background: #1e2130;
+    border: 1px solid #7c3aed;
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+  }
+  .p95-card .metric-value { color: #c4b5fd; }
+  
+  .refresh-btn {
+    padding: 0.5rem 1.2rem;
+    background: #1e2130;
+    border: 1px solid #2d3249;
+    border-radius: 6px;
+    color: #c4b5fd;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover {
+    background: #2d3249;
+    border-color: #7c3aed;
+  }
+  
+  .error { color: #f87171; margin-top: 1rem; }
+  .spinner {
+    color: #9ca3af;
+    margin: 2rem 0;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
-  <h1>Property Knowledge Assistant</h1>
-  <p class="subtitle">Ask anything about home buying, mortgages, and closing</p>
+  <div class="header">
+    <h1>Property Knowledge Assistant</h1>
+    <p class="subtitle">Agentic RAG with Critic Validation & Proactive Monitoring</p>
+  </div>
+  
   <div class="container">
-    <div class="input-row">
-      <input id="question" type="text" placeholder="What are closing costs?" />
-      <button id="ask">Ask</button>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('ask')">ASK</button>
+      <button class="tab" onclick="switchTab('monitor')">MONITOR</button>
+      <button class="tab" onclick="switchTab('metrics')">METRICS</button>
     </div>
-    <div class="examples">
-      <span class="example">What is earnest money?</span>
-      <span class="example">How does an appraisal work?</span>
-      <span class="example">Explain title insurance</span>
-      <span class="example">Fixed vs adjustable rate mortgage</span>
+    
+    <!-- ASK TAB -->
+    <div id="ask-tab" class="tab-content active">
+      <div class="samples">
+        <button class="sample-btn" onclick="useSample('What are closing costs?')">What are closing costs?</button>
+        <button class="sample-btn" onclick="useSample('How does a fixed-rate mortgage work?')">How does a fixed-rate mortgage work?</button>
+        <button class="sample-btn" onclick="useSample('What is a home appraisal?')">What is a home appraisal?</button>
+        <button class="sample-btn" onclick="useSample('What is title insurance?')">What is title insurance?</button>
+        <button class="sample-btn" onclick="useSample('What is earnest money?')">What is earnest money?</button>
+        <button class="sample-btn" onclick="useSample('What is a home inspection?')">What is a home inspection?</button>
+      </div>
+      
+      <div class="input-row">
+        <input id="question" type="text" placeholder="Ask a real estate question..." />
+        <button class="primary" onclick="ask()">Ask</button>
+      </div>
+      
+      <div id="ask-output"></div>
     </div>
-    <div id="output"></div>
+    
+    <!-- MONITOR TAB -->
+    <div id="monitor-tab" class="tab-content">
+      <button class="refresh-btn" onclick="loadMonitor()">Refresh</button>
+      <div id="monitor-output"></div>
+    </div>
+    
+    <!-- METRICS TAB -->
+    <div id="metrics-tab" class="tab-content">
+      <button class="refresh-btn" onclick="loadMetrics()">Refresh</button>
+      <div id="metrics-output"></div>
+    </div>
   </div>
 
 <script>
-const input = document.getElementById('question');
-const button = document.getElementById('ask');
-const output = document.getElementById('output');
+let currentQueryId = null;
+let feedbackGiven = false;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  
+  event.target.classList.add('active');
+  document.getElementById(`${tab}-tab`).classList.add('active');
+  
+  if (tab === 'monitor' && !document.getElementById('monitor-output').innerHTML) {
+    loadMonitor();
+  }
+  if (tab === 'metrics' && !document.getElementById('metrics-output').innerHTML) {
+    loadMetrics();
+  }
+}
+
+function useSample(text) {
+  document.getElementById('question').value = text;
+  ask();
+}
 
 async function ask() {
-  const q = input.value.trim();
+  const q = document.getElementById('question').value.trim();
   if (!q) return;
-  button.disabled = true;
-  button.textContent = 'Thinking...';
-  output.innerHTML = '';
+  
+  const output = document.getElementById('ask-output');
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Thinking...';
+  output.innerHTML = '<div class="spinner">Retrieving answer...</div>';
+  feedbackGiven = false;
+  
   try {
     const res = await fetch('/ask?q=' + encodeURIComponent(q));
     if (!res.ok) throw new Error('Request failed: ' + res.status);
     const data = await res.json();
-    const flagged = data.meta.flagged ? 'flagged' : '';
+    
+    currentQueryId = data.meta.query_id;
+    const score = data.meta.confidence_score || 0;
+    const grounding = data.meta.grounding_status || 'unknown';
+    const flagged = data.meta.flagged;
+    const reasoning = data.meta.critic_reasoning || '';
+    
+    const confClass = score >= 0.75 ? 'conf-green' : score >= 0.5 ? 'conf-yellow' : 'conf-red';
+    const groundingClass = {
+      'grounded': 'badge-grounded',
+      'partially_grounded': 'badge-partial',
+      'ungrounded': 'badge-ungrounded'
+    }[grounding] || 'badge-partial';
+    const groundingLabel = grounding.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const flaggedBadge = flagged ? '<span class="badge badge-flagged">Flagged</span>' : '';
+    
     output.innerHTML = `
-      <div class="answer">${data.response}</div>
-      <div class="meta">
-        <span class="badge ${flagged}">${data.meta.grounding_status}</span>
-        <span>Confidence: ${(data.meta.confidence_score * 100).toFixed(0)}%</span>
-        <span>Query #${data.meta.query_id}</span>
+      <div class="answer-card">${data.response}</div>
+      <div class="meta-row">
+        <span>Confidence:</span>
+        <span class="${confClass}">${(score * 100).toFixed(0)}%</span>
+        <span class="badge ${groundingClass}">${groundingLabel}</span>
+        ${flaggedBadge}
+      </div>
+      ${reasoning ? `<div class="reasoning-box">${reasoning}</div>` : ''}
+      <div style="margin-top:1rem; color:#9ca3af; font-size:0.85rem;">Was this answer helpful?</div>
+      <div class="feedback-row">
+        <button class="feedback-btn" onclick="sendFeedback('up')">👍 Thumbs Up</button>
+        <button class="feedback-btn" onclick="sendFeedback('down')">👎 Thumbs Down</button>
       </div>
     `;
   } catch (err) {
-    output.innerHTML = '<div class="error">Error: ' + err.message + '</div>';
+    output.innerHTML = `<div class="error">Error: ${err.message}</div>`;
   } finally {
-    button.disabled = false;
-    button.textContent = 'Ask';
+    btn.disabled = false;
+    btn.textContent = 'Ask';
   }
 }
 
-button.addEventListener('click', ask);
-input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
-document.querySelectorAll('.example').forEach(el => {
-  el.addEventListener('click', () => {
-    input.value = el.textContent;
-    ask();
-  });
+async function sendFeedback(rating) {
+  if (!currentQueryId || feedbackGiven) return;
+  
+  try {
+    await fetch('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query_id: currentQueryId, rating })
+    });
+    feedbackGiven = true;
+    
+    const output = document.getElementById('ask-output');
+    const feedbackRow = output.querySelector('.feedback-row');
+    feedbackRow.innerHTML = '<div class="feedback-thanks">Thanks for your feedback!</div>';
+  } catch (err) {
+    console.error('Feedback error:', err);
+  }
+}
+
+async function loadMonitor() {
+  const output = document.getElementById('monitor-output');
+  output.innerHTML = '<div class="spinner">Loading monitor report...</div>';
+  
+  try {
+    const res = await fetch('/monitor');
+    if (!res.ok) throw new Error('Request failed');
+    const data = await res.json();
+    
+    const summary = data.summary || {};
+    const total = summary.total_queries || 0;
+    const flagged = summary.flagged_queries || 0;
+    const flagRate = summary.flag_rate || 0;
+    const avgConf = summary.average_confidence_score || 0;
+    
+    let html = `
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">${total}</div>
+          <div class="metric-label">Total Queries</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${flagged}</div>
+          <div class="metric-label">Flagged Queries</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${(flagRate * 100).toFixed(1)}%</div>
+          <div class="metric-label">Flag Rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${(avgConf * 100).toFixed(1)}%</div>
+          <div class="metric-label">Avg Confidence</div>
+        </div>
+      </div>
+    `;
+    
+    if (data.recommendation) {
+      html += `<div class="recommendation-box">${data.recommendation}</div>`;
+    }
+    
+    const grounding = data.grounding_distribution || {};
+    const totalG = Object.values(grounding).reduce((a, b) => a + b, 0) || 1;
+    if (Object.keys(grounding).length) {
+      html += '<div class="section-title">Grounding Distribution</div>';
+      for (const [status, count] of Object.entries(grounding)) {
+        const pct = (count / totalG * 100).toFixed(0);
+        const label = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        html += `
+          <div class="bar-container">
+            <div class="bar-label">
+              <span>${label}</span>
+              <span>${count} (${pct}%)</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    const flaggedQueries = data.recent_flagged_queries || [];
+    if (flaggedQueries.length) {
+      html += '<div class="section-title" style="margin-top:1.5rem;">Recent Flagged Queries</div>';
+      for (const item of flaggedQueries) {
+        html += `
+          <div class="flagged-item">
+            <strong>${item.query || ''}</strong>
+            <span class="flagged-score">score: ${(item.confidence_score || 0).toFixed(2)}</span>
+            <span class="flagged-time">${item.timestamp || ''}</span>
+          </div>
+        `;
+      }
+    } else if (total === 0) {
+      html += '<div style="color:#9ca3af; margin-top:1rem;">No queries recorded yet. Use the ASK tab to get started.</div>';
+    }
+    
+    output.innerHTML = html;
+  } catch (err) {
+    output.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+  }
+}
+
+async function loadMetrics() {
+  const output = document.getElementById('metrics-output');
+  output.innerHTML = '<div class="spinner">Loading metrics...</div>';
+  
+  try {
+    const [metricsRes, feedbackRes] = await Promise.all([
+      fetch('/metrics'),
+      fetch('/feedback/summary')
+    ]);
+    
+    const metrics = await metricsRes.json();
+    const feedback = await feedbackRes.json();
+    
+    let html = `
+      <div class="section-title">Per-Step Latency (avg ms)</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">${(metrics.avg_embed_latency_ms || 0).toFixed(0)}</div>
+          <div class="metric-label">Embed</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${(metrics.avg_retrieve_latency_ms || 0).toFixed(0)}</div>
+          <div class="metric-label">Retrieve</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${(metrics.avg_generate_latency_ms || 0).toFixed(0)}</div>
+          <div class="metric-label">Generate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${(metrics.avg_critic_latency_ms || 0).toFixed(0)}</div>
+          <div class="metric-label">Critic</div>
+        </div>
+      </div>
+      
+      <div class="section-title" style="margin-top:1.5rem;">Overall Stats</div>
+      <div class="metrics-grid">
+        <div class="p95-card">
+          <div class="metric-value">${(metrics.p95_total_latency_ms || 0).toFixed(0)}</div>
+          <div class="metric-label">P95 Total Latency (ms)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${metrics.total_queries || 0}</div>
+          <div class="metric-label">Total Queries</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${((metrics.flag_rate || 0) * 100).toFixed(1)}%</div>
+          <div class="metric-label">Flag Rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${((metrics.avg_confidence_score || 0) * 100).toFixed(1)}%</div>
+          <div class="metric-label">Avg Confidence</div>
+        </div>
+      </div>
+      
+      <div class="section-title" style="margin-top:1.5rem;">Human Feedback Summary</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">${feedback.total_feedback || 0}</div>
+          <div class="metric-label">Total Feedback</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${feedback.thumbs_up || 0}</div>
+          <div class="metric-label">Thumbs Up</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${feedback.thumbs_down || 0}</div>
+          <div class="metric-label">Thumbs Down</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${((feedback.agreement_rate || 0) * 100).toFixed(1)}%</div>
+          <div class="metric-label">Agreement Rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">${((feedback.disagreement_rate || 0) * 100).toFixed(1)}%</div>
+          <div class="metric-label">Disagreement Rate</div>
+        </div>
+      </div>
+    `;
+    
+    output.innerHTML = html;
+  } catch (err) {
+    output.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+  }
+}
+
+document.getElementById('question').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') ask();
 });
 </script>
 </body>
