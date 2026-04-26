@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+
     { "source": "/ask", "destination": "/api/index.py" },
     { "source": "/feedback", "destination": "/api/index.py" },
     { "source": "/feedback/summary", "destination": "/api/index.py" },
