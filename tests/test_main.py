@@ -61,8 +61,16 @@ def client(mock_pinecone, mock_genai_client, mock_tracker):
     mock_pinecone.upsert.return_value = None
     import main
     main._initialized = True
+    main.monitor = MagicMock()
+    main.monitor.get_report.return_value = {
+        "summary": {"total_queries": 1, "flag_rate": 0.0, "average_confidence_score": 0.85},
+        "grounding_distribution": {"grounded": 1, "partially_grounded": 0, "ungrounded": 0},
+        "recent_flagged_queries": [],
+        "recommendation": "System is performing well."
+    }
     yield TestClient(main.app)
     main._initialized = False
+    main.monitor = None
 
 
 # Unit Tests - Normalize
