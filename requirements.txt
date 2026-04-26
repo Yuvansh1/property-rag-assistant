@@ -1,0 +1,6 @@
+fastapi
+pinecone
+google-genai
+numpy
+python-dotenv
+mangum
