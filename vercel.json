@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "api/index.py": { "maxDuration": 60 }
-  },
   "rewrites": [
     { "source": "/ask", "destination": "/api/index.py" },
     { "source": "/feedback", "destination": "/api/index.py" },
