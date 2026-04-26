@@ -59,8 +59,10 @@ def client(mock_pinecone, mock_genai_client, mock_tracker):
         embeddings=[MagicMock(values=[0.1] * 1536)]
     )
     mock_pinecone.upsert.return_value = None
-    from main import app
-    return TestClient(app)
+    import main
+    main._initialized = True
+    yield TestClient(main.app)
+    main._initialized = False
 
 
 # Unit Tests - Normalize
