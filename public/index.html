@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Property Knowledge Assistant</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f5f5f7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 { margin-bottom: 0.5rem; color: #1d1d1f; }
+  .subtitle { color: #6e6e73; margin-bottom: 2rem; font-size: 0.95rem; }
+  .container {
+    width: 100%;
+    max-width: 720px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+  }
+  .input-row { display: flex; gap: 0.5rem; }
+  input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d2d2d7;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+  }
+  input:focus { border-color: #0071e3; }
+  button {
+    padding: 0.75rem 1.5rem;
+    background: #0071e3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  button:disabled { background: #a8a8a8; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #0077ed; }
+  .answer {
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: #f5f5f7;
+    border-radius: 8px;
+    line-height: 1.6;
+    color: #1d1d1f;
+    white-space: pre-wrap;
+  }
+  .meta {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: #6e6e73;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  .badge.flagged { background: #ffebee; color: #c62828; }
+  .examples { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .example {
+    padding: 0.4rem 0.8rem;
+    background: #f5f5f7;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    color: #424245;
+  }
+  .example:hover { background: #e8e8ed; }
+  .error { color: #c62828; margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Property Knowledge Assistant</h1>
+  <p class="subtitle">Ask anything about home buying, mortgages, and closing</p>
+  <div class="container">
+    <div class="input-row">
+      <input id="question" type="text" placeholder="What are closing costs?" />
+      <button id="ask">Ask</button>
+    </div>
+    <div class="examples">
+      <span class="example">What is earnest money?</span>
+      <span class="example">How does an appraisal work?</span>
+      <span class="example">Explain title insurance</span>
+      <span class="example">Fixed vs adjustable rate mortgage</span>
+    </div>
+    <div id="output"></div>
+  </div>
+
+<script>
+const input = document.getElementById('question');
+const button = document.getElementById('ask');
+const output = document.getElementById('output');
+
+async function ask() {
+  const q = input.value.trim();
+  if (!q) return;
+  button.disabled = true;
+  button.textContent = 'Thinking...';
+  output.innerHTML = '';
+  try {
+    const res = await fetch('/ask?q=' + encodeURIComponent(q));
+    if (!res.ok) throw new Error('Request failed: ' + res.status);
+    const data = await res.json();
+    const flagged = data.meta.flagged ? 'flagged' : '';
+    output.innerHTML = `
+      <div class="answer">${data.response}</div>
+      <div class="meta">
+        <span class="badge ${flagged}">${data.meta.grounding_status}</span>
+        <span>Confidence: ${(data.meta.confidence_score * 100).toFixed(0)}%</span>
+        <span>Query #${data.meta.query_id}</span>
+      </div>
+    `;
+  } catch (err) {
+    output.innerHTML = '<div class="error">Error: ' + err.message + '</div>';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Ask';
+  }
+}
+
+button.addEventListener('click', ask);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+document.querySelectorAll('.example').forEach(el => {
+  el.addEventListener('click', () => {
+    input.value = el.textContent;
+    ask();
+  });
+});
+</script>
+</body>
+</html>
