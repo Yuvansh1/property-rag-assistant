@@ -122,6 +122,7 @@ documents = [
 
 _initialized = False
 
+
 def ensure_initialized():
     global _initialized, pc, index, client, monitor, tracker
     if _initialized:
