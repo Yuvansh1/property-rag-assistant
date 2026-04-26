@@ -1,13 +1,13 @@
 {
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
+  "routes": [
+    { "handle": "filesystem" },
 
-    { "source": "/ask", "destination": "/api/index.py" },
-    { "source": "/feedback", "destination": "/api/index.py" },
-    { "source": "/feedback/summary", "destination": "/api/index.py" },
-    { "source": "/monitor", "destination": "/api/index.py" },
-    { "source": "/metrics", "destination": "/api/index.py" },
-    { "source": "/docs", "destination": "/api/index.py" },
-    { "source": "/openapi.json", "destination": "/api/index.py" }
+    { "src": "^/ask", "dest": "/api/index.py" },
+    { "src": "^/feedback", "dest": "/api/index.py" },
+    { "src": "^/feedback/summary", "dest": "/api/index.py" },
+    { "src": "^/monitor", "dest": "/api/index.py" },
+    { "src": "^/metrics", "dest": "/api/index.py" },
+    { "src": "^/docs", "dest": "/api/index.py" },
+    { "src": "^/openapi.json", "dest": "/api/index.py" }
   ]
 }
